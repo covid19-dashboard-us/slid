@@ -1,37 +1,11 @@
 rm(list = ls())
 
 library(devtools)
-#install_github('covid19-dashboard-us/slid')
+install_github('covid19-dashboard-us/slid')
 library(slid)
 library(ggplot2)
 library(plotly)
 library(gapminder)
-
-pop.state$State
-
-region.state = pop.state
-
-features.state=read.csv("data/region.csv", header=T)
-
-features.state$pop=pop.state$population
-
-names(features.state)
-
-save(features.state, file = "features.state.rda")
-
-I.new.state = inner_join(I.state, features.state, by = "State")
-dim(I.new.state)
-
-I.new.state.long <- gather(I.new.state, DATE, Infected, X2020.12.11:X2020.01.22, factor_key=TRUE)
-dim(I.new.state.long)
-
-D.state.long <- gather(D.state, DATE, Death, X2020.12.11:X2020.01.22, factor_key=TRUE)
-dim(D.state.long)
-
-state.long = I.new.state.long
-state.long$Death = D.state.long$Death
-names(state.long)
-save(state.long, file = 'data/state.long.rda')
 
 data(state.long)
 names(state.long)
@@ -43,13 +17,13 @@ state.long.DEC$log.Infected = log10(state.long.DEC$Infected)
 state.long.DEC$log.Death = log10(state.long.DEC$Death)
 
 gg <- ggplot(state.long.DEC, aes(log.Infected, log.Death, color = State)) +
-  geom_point(aes(size = population, frame = as.numeric(DATE), ids = State)) +
+  geom_point(aes(size = pop, frame = as.numeric(DATE), ids = State)) +
   scale_x_log10() 
 ggplotly(gg)
 
 
 base <- state.long.DEC %>%
-  plot_ly(x = ~log.Infected, y = ~log.Death, size = ~population, 
+  plot_ly(x = ~log.Infected, y = ~log.Death, size = ~pop, 
           text = ~State, hoverinfo = "text") %>%
   layout(xaxis = list(type = "log"))
 
@@ -62,10 +36,6 @@ base %>%
   animation_slider(
     currentvalue = list(type = "date", font = list(color="red"))
   )
-
-xaxis <- list(title = "", showline = FALSE, showticklabels = TRUE,
-              showgrid = TRUE, type='date', tickformat = '%m/%d', 
-              range = c(as.Date('2020-01-20'), date.update + 12))
 
 library(gapminder)
 library(ggplot2)
@@ -95,12 +65,12 @@ ggplotly(p2)
 
 
 gg <- ggplot(state.long.DEC, aes(Infected, Death, color = State)) +
-  geom_point(aes(size = population, frame = as.numeric(DATE), ids = State)) +
+  geom_point(aes(size = pop, frame = as.numeric(DATE), ids = State)) +
   scale_x_log10() 
 ggplotly(gg)
 
-gg <- ggplot(gapminder, aes(gdpPercap, lifeExp, color = continent)) +
-  geom_point(aes(size = pop, frame = year, ids = country)) +
+gg <- ggplot(gapminder, aes(gdpPercap, lifeExp, color = Region)) +
+  geom_point(aes(size = pop, frame = year, ids = State)) +
   scale_x_log10()
 ggplotly(gg)
 
@@ -108,31 +78,24 @@ as.numeric(state.long$DATE)
 
 
 
-meanLife <- with(gapminder, tapply(lifeExp, INDEX = continent, mean))
-gapminder$continent <- factor(
-  gapminder$continent, levels = names(sort(meanLife))
-)
-
-base <- gapminder %>%
-  plot_ly(x = ~gdpPercap, y = ~lifeExp, size = ~pop, 
-          text = ~country, hoverinfo = "text") %>%
-  layout(xaxis = list(type = "log"))
-
 base %>%
-  add_markers(color = ~continent, frame = ~year, ids = ~country) %>%
+  add_markers(color = ~State, frame = ~DATE, ids = ~State) %>%
   animation_opts(1000, easing = "elastic", redraw = FALSE) %>%
   animation_button(
     x = 1, xanchor = "right", y = 0, yanchor = "bottom"
   ) %>%
   animation_slider(
-    currentvalue = list(prefix = "YEAR ", font = list(color="red"))
+    currentvalue = list(type = "date", font = list(color="red"))
   )
 
-base %>%
-  add_markers(data = gapminder, frame = ~continent) %>%
-  hide_legend() %>%
-  animation_opts(frame = 1000, transition = 0, redraw = FALSE)
+base <- state.long.DEC %>%
+  plot_ly(x = ~DATE, y = ~Infected, frame = ~Region,
+          text = ~State, hoverinfo = "text") %>%
+  add_lines(linetype = ~State, colors = ~State)
 
+base %>% 
+  layout(xaxis = list(type = "date", range=c('2020-12-01', '2020-12-11'))) %>% 
+  animation_opts(1000, easing = "elastic", redraw = FALSE, transition = 0)
 
 
 
